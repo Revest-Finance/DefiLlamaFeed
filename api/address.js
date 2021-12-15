@@ -1,10 +1,29 @@
 require('isomorphic-fetch');
+import {addresses} from '../addresses.js';
+
 
 module.exports = async (req, res) => {
     handleCORS(res);
     let status = 200;
+    let network = 1;
+    if(req.query.chainId != undefined) {
+        network = Number(req.query.chainId);
+        if(!addresses.hasOwnProperty(network)) {
+            network = 1;
+        }
+    }
     
-    const URL = "https://api.etherscan.io/api?module=account&action=tokentx&address=0xA81bd16Aa6F6B25e66965A2f842e9C806c0AA11F&page=1&offset=10000&startblock=0&endblock=latest&sort=asc&apikey=" + process.env.ETHERSCAN_API;
+    const ETH_URL = addresses[network].SCAN_URL + "/api?module=account&action=tokentx&address=" + addresses[network].TOKENVAULT  +"&page=1&offset=10000&startblock=0&endblock=latest&sort=asc&apikey=" + process.env["ETHERSCAN_API_" + network];
+    console.log(ETH_URL);
+    let body = await formList(ETH_URL);
+    const response = {
+        statusCode: status,
+        body
+    };
+    res.send(response);
+}
+
+async function formList(URL) {
     let fullLog = await fetch(URL);
     let ethersResp = await fullLog.json();
     let tokens = {};
@@ -16,18 +35,12 @@ module.exports = async (req, res) => {
         }
         tokens[inputData.contractAddress] += Number(inputData.value);
     }
-    console.log(tokens);
     for(const address in tokens){
         if(tokens[address] > 0) {
         realTokens.add(address);
         }
     }
-    let body = Array.from(realTokens);
-    const response = {
-        statusCode: status,
-        body
-    };
-    res.send(response);
+    return Array.from(realTokens);
 }
 
 
